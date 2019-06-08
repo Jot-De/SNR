@@ -167,7 +167,7 @@ callbacks = [checkpoint, tensorboard, csvlogger, reduce]
 
 # -----------Optimizers-----------#
 opt1 = SGD(lr=1e-4, momentum=0.99)
-opt = Adam(lr=1e-2)
+opt = Adam(lr=1e-3)
 # ----------Compile---------------#
 model.compile(
     loss='sparse_categorical_crossentropy',
