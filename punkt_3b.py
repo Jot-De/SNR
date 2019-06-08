@@ -13,7 +13,7 @@ from IPython.display import SVG
 
 from keras.utils.vis_utils import model_to_dot
 from keras.applications.mobilenet_v2 import MobileNetV2
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.preprocessing.image import ImageDataGenerator
 from keras.optimizers import Adam, SGD
 from keras.utils.vis_utils import plot_model
@@ -100,30 +100,20 @@ augs_gen = ImageDataGenerator(
 
 augs_gen.fit(x_train)
 
-base_model = MobileNetV2(input_shape=(imgsize, imgsize, 3), weights='imagenet', include_top=False, classes=len(dirs))
-# Create own classifier head
-model = Sequential()
-model.add(base_model)
-model.add(layers.GlobalAveragePooling2D())
-model.add(layers.Dense(len(dirs), activation='softmax', use_bias=True, name='Logits'))
-# %%
-# Punkt 1
-classification_layers_names = ['Logits']
-
-for layer in model.layers:
-    if layer.get_config()['name'] in classification_layers_names:
-        layer.trainable = True
-    else:
-        layer.trainable = False
+model = load_model("model_3.h5")
+# layers_to_del = ['Conv_1', 'Conv_1_bn', 'out_relu']
+model.layers[0].pop()
+model.layers[0].pop()
+model.layers[0].pop()
 
 model.summary()
 
 SVG(model_to_dot(model).create(prog='dot', format='svg'))
-plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
+plot_model(model, to_file='model_plot_3b.png', show_shapes=True, show_layer_names=True)
 
 # Save to file learning data after each epoch
 checkpoint = ModelCheckpoint(
-    './base.model',
+    './base.model_3b',
     monitor='val_loss',
     verbose=1,
     save_best_only=True,
@@ -141,7 +131,7 @@ earlystop = EarlyStopping(
 )
 # Log history of teaching
 tensorboard = TensorBoard(
-    log_dir='./logs',
+    log_dir='./logs_3b',
     histogram_freq=0,
     batch_size=16,
     write_graph=True,
@@ -177,23 +167,23 @@ model.compile(
 # -----------Training------------#
 history = model.fit_generator(
     augs_gen.flow(x_train, y_train, batch_size=16),
-    validation_data=augs_gen.flow(x_val, y_val, batch_size=32),
+    validation_data=augs_gen.flow(x_val, y_val, batch_size=len(x_val)),
     steps_per_epoch=ceil(len(x_train) / 16),
     validation_steps=ceil(len(x_val) / 32),
     epochs=3,
-    verbose=1,
+    verbose=2,
     callbacks=callbacks
 )
 
 show_final_history(history)
-model.load_weights('./base.model')
+model.load_weights('./base.model_3b')
 model_score = model.evaluate_generator(augs_gen.flow(x_test, y_test, batch_size=32), steps=ceil(len(x_test) / 32))
 print("Model Test Loss:", model_score[0])
 print("Model Test Accuracy:", model_score[1])
 
 model_json = model.to_json()
-with open("model.json", "w") as json_file:
+with open("model_3b.json", "w") as json_file:
     json_file.write(model_json)
 
-model.save("model.h5")
+model.save("model_3b.h5")
 print("Weights Saved")
