@@ -2,10 +2,11 @@ import os, cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
+from math import ceil
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import confusion_matrix,roc_curve,auc
+from sklearn.metrics import confusion_matrix, roc_curve, auc
 
 from tqdm import tqdm
 from IPython.display import SVG
@@ -14,20 +15,23 @@ from keras.utils.vis_utils import model_to_dot
 from keras.applications.mobilenet_v2 import MobileNetV2
 from keras.models import Sequential
 from keras.preprocessing.image import ImageDataGenerator
-from keras.optimizers import Adam,SGD
+from keras.optimizers import Adam, SGD
 from keras.utils.vis_utils import plot_model
-from keras.callbacks import ModelCheckpoint,EarlyStopping,TensorBoard,CSVLogger,ReduceLROnPlateau,LearningRateScheduler
+from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, CSVLogger, ReduceLROnPlateau, \
+    LearningRateScheduler
 from keras import layers
 
 # os.chdir("C:\\Users\\Janek\\Desktop\\EITI\\SNR\\klasyfikacja psów\\code")
 os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
 image_dir = '../input/images/Images/'
+# image_dir = '../input/images/Images_3'
 
 dirs = os.listdir(image_dir)
 
 X = []
 Z = []
 imgsize = 224
+
 
 def show_final_history(history):
     fig, ax = plt.subplots(1, 2, figsize=(15, 5))
@@ -39,6 +43,7 @@ def show_final_history(history):
     ax[1].plot(history.epoch, history.history["val_acc"], label="Validation acc")
     ax[0].legend()
     ax[1].legend()
+
 
 def label_assignment(img, label):
     return label
@@ -60,28 +65,28 @@ for dir_name in dirs:
     label = dir_name.split(sep='-', maxsplit=1)[1]
     training_data(label, full_dir)
 
-
 X = np.array(X)
 label_encoder = LabelEncoder()
 Y = label_encoder.fit_transform(Z)
 del Z
 
-x_train, x_test, y_train, y_test = train_test_split(X,Y,test_size=0.3,random_state=69)
+x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.4, random_state=69)
 del X
 del Y
+x_val, x_test, y_val, y_test = train_test_split(x_test, y_test, test_size=0.5, random_state=13)
 augs_gen = ImageDataGenerator(
-        rescale=1./255,
-        featurewise_center=False,
-        samplewise_center=False,
-        featurewise_std_normalization=False,
-        samplewise_std_normalization=False,
-        zca_whitening=False,
-        rotation_range=0,
-        zoom_range = 0,
-        width_shift_range=0,
-        height_shift_range=0,
-        horizontal_flip=False,
-        vertical_flip=False)
+    rescale=1. / 255,
+    featurewise_center=False,
+    samplewise_center=False,
+    featurewise_std_normalization=False,
+    samplewise_std_normalization=False,
+    zca_whitening=False,
+    rotation_range=0,
+    zoom_range=0,
+    width_shift_range=0,
+    height_shift_range=0,
+    horizontal_flip=False,
+    vertical_flip=False)
 
 augs_gen.fit(x_train)
 
@@ -157,23 +162,23 @@ opt1 = Adam(lr=1e-2)
 # ----------Compile---------------#
 model.compile(
     loss='sparse_categorical_crossentropy',
-    optimizer='adam',
+    optimizer=opt1,
     metrics=['accuracy']
 )
 # -----------Training------------#
 history = model.fit_generator(
     augs_gen.flow(x_train, y_train, batch_size=16),
-    validation_data=(x_test, y_test),
+    validation_data=augs_gen.flow(x_val, y_val),
+    steps_per_epoch=ceil(len(x_train) / 16),
     validation_steps=2,
-    steps_per_epoch=2,
-    epochs=1,
+    epochs=50,
     verbose=1,
     callbacks=callbacks
 )
 
 show_final_history(history)
 model.load_weights('./base.model')
-model_score = model.evaluate(x_test, y_test)
+model_score = model.evaluate(augs_gen.flow(x_test, y_test))
 print("Model Test Loss:", model_score[0])
 print("Model Test Accuracy:", model_score[1])
 
@@ -183,5 +188,3 @@ with open("model.json", "w") as json_file:
 
 model.save("model.h5")
 print("Weights Saved")
-
-
