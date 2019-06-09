@@ -23,8 +23,8 @@ from keras import layers
 
 # os.chdir("C:\\Users\\Janek\\Desktop\\EITI\\SNR\\klasyfikacja psów\\code")
 os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
-# image_dir = '../input/images/Images/'
-image_dir = '../input/images/Images_3'
+image_dir = '../input/images/Images/'
+# image_dir = '../input/images/Images_3'
 
 dirs = os.listdir(image_dir)
 
@@ -180,8 +180,8 @@ history = model.fit_generator(
     validation_data=augs_gen.flow(x_val, y_val, batch_size=32),
     steps_per_epoch=ceil(len(x_train) / 16),
     validation_steps=ceil(len(x_val) / 32),
-    epochs=3,
-    verbose=1,
+    epochs=50,
+    verbose=2,
     callbacks=callbacks
 )
 
