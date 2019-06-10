@@ -64,16 +64,26 @@ def setup():
 
 def create_model():
     base_model = MobileNetV2(input_shape=(imgsize, imgsize, 3), weights='imagenet', include_top=False,
-                             classes=len(dirs))
+                             classes=classes_number)
     # Create own classifier head
     model = Sequential()
     model.add(base_model)
     model.add(layers.GlobalAveragePooling2D())
-    model.add(layers.Dense(len(dirs), activation='softmax', use_bias=True, name='Logits'))
+    model.add(layers.Dense(classes_number, activation='softmax', use_bias=True, name='Logits'))
     model.summary()
 
     SVG(model_to_dot(model).create(prog='dot', format='svg'))
     plot_model(model, to_file='model_plot_3.png', show_shapes=True, show_layer_names=True)
+
+    # -----------Optimizers-----------#
+    opt1 = SGD(lr=1e-4, momentum=0.99)
+    opt = Adam(lr=1e-2)
+    # ----------Compile---------------#
+    model.compile(
+        loss='sparse_categorical_crossentropy',
+        optimizer=opt,
+        metrics=['accuracy']
+    )
     return model
 
 
@@ -121,16 +131,6 @@ def train(model, train_generator, val_generator):
     )
 
     callbacks = [checkpoint, tensorboard, csvlogger, reduce, earlystop]
-
-    # -----------Optimizers-----------#
-    opt1 = SGD(lr=1e-4, momentum=0.99)
-    opt = Adam(lr=1e-2)
-    # ----------Compile---------------#
-    model.compile(
-        loss='sparse_categorical_crossentropy',
-        optimizer=opt,
-        metrics=['accuracy']
-    )
     # -----------Training------------#
     history = model.fit_generator(
         train_generator,
@@ -149,7 +149,6 @@ def evaluate(model, test_generator):
     model_score = model.evaluate_generator(test_generator, steps=test_samples_number / batch_size)
     print("Model Test Loss:", model_score[0])
     print("Model Test Accuracy:", model_score[1])
-
 
     predictions = model.predict_generator(test_generator, steps=test_samples_number / batch_size)
     predictions_labels = np.argmax(predictions, axis=1)

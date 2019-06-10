@@ -88,7 +88,15 @@ def create_model():
     model.summary()
     SVG(model_to_dot(model).create(prog='dot', format='svg'))
     plot_model(model, to_file='model_plot_2.png', show_shapes=True, show_layer_names=True)
-
+    # -----------Optimizers-----------#
+    opt1 = SGD(lr=1e-4, momentum=0.99)
+    opt = Adam(lr=1e-3)
+    # ----------Compile---------------#
+    model.compile(
+        loss='sparse_categorical_crossentropy',
+        optimizer=opt,
+        metrics=['accuracy']
+    )
     return model
 
 
@@ -138,15 +146,6 @@ def train(model, train_generator, val_generator):
 
     callbacks = [checkpoint, tensorboard, csvlogger, reduce, earlystop]
 
-    # -----------Optimizers-----------#
-    opt1 = SGD(lr=1e-4, momentum=0.99)
-    opt = Adam(lr=1e-3)
-    # ----------Compile---------------#
-    model.compile(
-        loss='sparse_categorical_crossentropy',
-        optimizer=opt,
-        metrics=['accuracy']
-    )
     # -----------Training------------#
     history = model.fit_generator(
         train_generator,

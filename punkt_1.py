@@ -58,7 +58,7 @@ def setup():
     val_generator = val_datagen.flow_from_directory(val_dir, target_size=(imgsize, imgsize), class_mode='sparse',
                                                     batch_size=batch_size, shuffle=False)
     test_generator = test_datagen.flow_from_directory(test_dir, target_size=(imgsize, imgsize), class_mode='sparse',
-                                                      batch_size=batch_size, shuffle=False)
+                                                      batch_size=1, shuffle=False)
 
     return train_generator, val_generator, test_generator
 
@@ -85,6 +85,17 @@ def create_model():
 
     SVG(model_to_dot(model).create(prog='dot', format='svg'))
     plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
+
+    # -----------Optimizers-----------#
+    opt1 = SGD(lr=1e-4, momentum=0.99)
+    opt = Adam(lr=1e-3)
+    # ----------Compile---------------#
+    model.compile(
+        loss='sparse_categorical_crossentropy',
+        optimizer=opt,
+        metrics=['accuracy']
+    )
+
     return model
 
 
@@ -132,16 +143,6 @@ def train(model, train_generator, val_generator):
     )
 
     callbacks = [checkpoint, tensorboard, csvlogger, reduce, earlystop]
-
-    # -----------Optimizers-----------#
-    opt1 = SGD(lr=1e-4, momentum=0.99)
-    opt = Adam(lr=1e-3)
-    # ----------Compile---------------#
-    model.compile(
-        loss='sparse_categorical_crossentropy',
-        optimizer=opt,
-        metrics=['accuracy']
-    )
     # -----------Training------------#
     history = model.fit_generator(
         train_generator,
@@ -157,11 +158,13 @@ def train(model, train_generator, val_generator):
 
 def evaluate(model, test_generator):
     model.load_weights('./base.model')
-    model_score = model.evaluate_generator(test_generator, steps=test_samples_number / batch_size)
+    test_generator.reset()
+    model_score = model.evaluate_generator(test_generator, steps=test_samples_number)
     print("Model Test Loss:", model_score[0])
     print("Model Test Accuracy:", model_score[1])
 
-    predictions = model.predict_generator(test_generator, steps=test_samples_number / batch_size)
+    test_generator.reset()
+    predictions = model.predict_generator(test_generator, steps=test_samples_number)
     predictions_labels = np.argmax(predictions, axis=1)
     print("Confusion matrix")
     print(confusion_matrix(test_generator.classes, y_pred=predictions_labels))
@@ -180,5 +183,5 @@ def evaluate(model, test_generator):
 if __name__ == '__main__':
     train_generator, val_generator, test_generator = setup()
     model = create_model()
-    train(model, train_generator, val_generator)
+    # train(model, train_generator, val_generator)
     evaluate(model, test_generator)
