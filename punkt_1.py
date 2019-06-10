@@ -158,12 +158,12 @@ csvlogger = CSVLogger(
 reduce = ReduceLROnPlateau(
     monitor='val_loss',
     factor=0.1,
-    patience=10,
+    patience=5,
     verbose=1,
     mode='auto'
 )
 
-callbacks = [checkpoint, tensorboard, csvlogger, reduce]
+callbacks = [checkpoint, tensorboard, csvlogger, reduce, earlystop]
 
 # -----------Optimizers-----------#
 opt1 = SGD(lr=1e-4, momentum=0.99)

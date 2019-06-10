@@ -114,7 +114,7 @@ tensorboard = TensorBoard(
 )
 # Logs of learning
 csvlogger = CSVLogger(
-    filename="training_csv.log",
+    filename="training_csv_2.log",
     separator=",",
     append=False
 )
@@ -122,12 +122,12 @@ csvlogger = CSVLogger(
 reduce = ReduceLROnPlateau(
     monitor='val_loss',
     factor=0.1,
-    patience=10,
+    patience=5,
     verbose=1,
     mode='auto'
 )
 
-callbacks = [checkpoint, tensorboard, csvlogger, reduce]
+callbacks = [checkpoint, tensorboard, csvlogger, reduce, earlystop]
 
 # -----------Optimizers-----------#
 opt1 = SGD(lr=1e-4, momentum=0.99)
@@ -139,17 +139,17 @@ model.compile(
     metrics=['accuracy']
 )
 # -----------Training------------#
-history = model.fit_generator(
-    train_generator,
-    steps_per_epoch=train_samples_number / batch_size,
-    validation_data=val_generator,
-    validation_steps=val_samples_number / batch_size,
-    epochs=epochs,
-    verbose=2,
-    callbacks=callbacks
-)
+# history = model.fit_generator(
+#     train_generator,
+#     steps_per_epoch=train_samples_number / batch_size,
+#     validation_data=val_generator,
+#     validation_steps=val_samples_number / batch_size,
+#     epochs=epochs,
+#     verbose=2,
+#     callbacks=callbacks
+# )
 
-show_final_history(history)
+# show_final_history(history)
 model.load_weights('./base.model_2')
 model_score = model.evaluate_generator(test_generator, steps=test_samples_number / batch_size)
 print("Model Test Loss:", model_score[0])
