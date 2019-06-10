@@ -96,7 +96,7 @@ def train(model, train_generator, val_generator):
     earlystop = EarlyStopping(
         monitor='val_loss',
         min_delta=0.001,
-        patience=30,
+        patience=20,
         verbose=1,
         mode='auto'
     )
