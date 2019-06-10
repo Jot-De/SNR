@@ -1,7 +1,7 @@
 import os
 import matplotlib.pyplot as plt
 
-from sklearn.metrics import confusion_matrix, roc_curve, auc
+from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_report
 
 from IPython.display import SVG
 
@@ -166,6 +166,14 @@ def evaluate(model, test_generator):
     model_score = model.evaluate_generator(test_generator, steps=test_samples_number / batch_size)
     print("Model Test Loss:", model_score[0])
     print("Model Test Accuracy:", model_score[1])
+
+    predictions = model.predict_generator(test_generator, steps=test_samples_number / batch_size)
+    predictions_labels = np.argmax(predictions, axis=1)
+    print("Confusion matrix")
+    print(confusion_matrix(test_generator.classes, y_pred=predictions_labels))
+    print('Classification Report')
+    target_names = test_generator.class_indices.keys()
+    print(classification_report(test_generator.classes, predictions_labels, target_names=target_names))
 
     model_json = model.to_json()
     with open("model_2.json", "w") as json_file:

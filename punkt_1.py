@@ -1,14 +1,9 @@
-import os, cv2
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from math import ceil
+from sklearn.metrics import confusion_matrix, classification_report
 
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import confusion_matrix, roc_curve, auc
-
-from tqdm import tqdm
 from IPython.display import SVG
 
 from keras.utils.vis_utils import model_to_dot
@@ -61,9 +56,9 @@ def setup():
     train_generator = train_datagen.flow_from_directory(train_dir, target_size=(imgsize, imgsize), class_mode='sparse',
                                                         batch_size=batch_size)
     val_generator = val_datagen.flow_from_directory(val_dir, target_size=(imgsize, imgsize), class_mode='sparse',
-                                                    batch_size=batch_size)
+                                                    batch_size=batch_size, shuffle=False)
     test_generator = test_datagen.flow_from_directory(test_dir, target_size=(imgsize, imgsize), class_mode='sparse',
-                                                      batch_size=batch_size)
+                                                      batch_size=batch_size, shuffle=False)
 
     return train_generator, val_generator, test_generator
 
@@ -165,6 +160,14 @@ def evaluate(model, test_generator):
     model_score = model.evaluate_generator(test_generator, steps=test_samples_number / batch_size)
     print("Model Test Loss:", model_score[0])
     print("Model Test Accuracy:", model_score[1])
+
+    predictions = model.predict_generator(test_generator, steps=test_samples_number / batch_size)
+    predictions_labels = np.argmax(predictions, axis=1)
+    print("Confusion matrix")
+    print(confusion_matrix(test_generator.classes, y_pred=predictions_labels))
+    print('Classification Report')
+    target_names = test_generator.class_indices.keys()
+    print(classification_report(test_generator.classes, predictions_labels, target_names=target_names))
 
     model_json = model.to_json()
     with open("model.json", "w") as json_file:
