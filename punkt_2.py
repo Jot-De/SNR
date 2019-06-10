@@ -1,5 +1,6 @@
 import os
 import matplotlib.pyplot as plt
+import numpy as np
 
 from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_report
 
@@ -16,7 +17,8 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, CSVLogg
 from keras import layers
 
 # os.chdir("C:\\Users\\Janek\\Desktop\\EITI\\SNR\\klasyfikacja psów\\code")
-os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
+# os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
+os.chdir("C:\\Users\\Marcin  Piotrek\\Desktop\\SNR\\Projekt")
 # image_dir = '../input/images/dataset/'
 # image_dir = '../input/images/Images_3'
 train_dir = '../input/images/dataset/train/'
@@ -146,6 +148,15 @@ def train(model, train_generator, val_generator):
 
     callbacks = [checkpoint, tensorboard, csvlogger, reduce, earlystop]
 
+    # -----------Optimizers-----------#
+    opt1 = SGD(lr=1e-4, momentum=0.99)
+    opt = Adam(lr=1e-3)
+    # ----------Compile---------------#
+    model.compile(
+        loss='sparse_categorical_crossentropy',
+        optimizer=opt,
+        metrics=['accuracy']
+    )
     # -----------Training------------#
     history = model.fit_generator(
         train_generator,
