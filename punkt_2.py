@@ -1,5 +1,6 @@
 import os
 import matplotlib.pyplot as plt
+import numpy as np
 
 from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_report
 
