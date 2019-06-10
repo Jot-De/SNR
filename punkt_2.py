@@ -1,14 +1,8 @@
-import os, cv2
-import numpy as np
+import os
 import matplotlib.pyplot as plt
 
-from math import ceil
-
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import confusion_matrix, roc_curve, auc
 
-from tqdm import tqdm
 from IPython.display import SVG
 
 from keras.utils.vis_utils import model_to_dot
@@ -23,14 +17,19 @@ from keras import layers
 
 # os.chdir("C:\\Users\\Janek\\Desktop\\EITI\\SNR\\klasyfikacja psów\\code")
 os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
-image_dir = '../input/images/Images/'
+# image_dir = '../input/images/dataset/'
 # image_dir = '../input/images/Images_3'
+train_dir = '../input/images/dataset/train/'
+val_dir = '../input/images/dataset/val/'
+test_dir = '../input/images/dataset/test/'
 
-dirs = os.listdir(image_dir)
-
-X = []
-Z = []
 imgsize = 224
+batch_size = 16
+epochs = 50
+classes_number = 120
+train_samples_number = 16418
+val_samples_number = 2009
+test_samples_number = 2153
 
 
 def show_final_history(history):
@@ -45,62 +44,23 @@ def show_final_history(history):
     ax[1].legend()
 
 
-def label_assignment(img, label):
-    return label
+# Data generators - rescale to change pixel values from 0-255 to 0-1
+train_datagen = ImageDataGenerator(rescale=1. / 255)
+val_datagen = ImageDataGenerator(rescale=1. / 255)
+test_datagen = ImageDataGenerator(rescale=1. / 255)
 
+# Generate batches of images on demand from directories
+train_generator = train_datagen.flow_from_directory(train_dir, target_size=(imgsize, imgsize), class_mode='sparse',
+                                                    batch_size=batch_size)
+val_generator = train_datagen.flow_from_directory(val_dir, target_size=(imgsize, imgsize), class_mode='sparse',
+                                                  batch_size=batch_size)
+test_generator = train_datagen.flow_from_directory(test_dir, target_size=(imgsize, imgsize), class_mode='sparse',
+                                                   batch_size=batch_size)
 
-def training_data(label, data_dir):
-    """
-    Load data and puts into an array with label
-    :param label:
-    :param data_dir:
-    :return:
-    """
-    for img in tqdm(os.listdir(data_dir)):
-        label = label_assignment(img, label)
-        path = os.path.join(data_dir, img)
-        img = cv2.imread(path, cv2.IMREAD_COLOR)
-        img = cv2.resize(img, (imgsize, imgsize))
-
-        X.append(np.array(img))
-        Z.append(str(label))
-
-
-for dir_name in dirs:
-    """
-    Iterates through directories
-    """
-    full_dir = os.path.join(image_dir, dir_name)
-    label = dir_name.split(sep='-', maxsplit=1)[1]
-    training_data(label, full_dir)
-
-X = np.array(X)
-label_encoder = LabelEncoder()
-Y = label_encoder.fit_transform(Z)
-del Z
-
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.4, random_state=69)
-del X
-del Y
-x_val, x_test, y_val, y_test = train_test_split(x_test, y_test, test_size=0.5, random_state=13)
-# Rescale to change pixel values from 0-255 to 0-1
-augs_gen = ImageDataGenerator(
-    rescale=1. / 255,
-    featurewise_center=False,
-    samplewise_center=False,
-    featurewise_std_normalization=False,
-    samplewise_std_normalization=False,
-    zca_whitening=False,
-    rotation_range=0,
-    zoom_range=0,
-    width_shift_range=0,
-    height_shift_range=0,
-    horizontal_flip=False,
-    vertical_flip=False)
-
-augs_gen.fit(x_train)
-
-base_model = MobileNetV2(input_shape=(imgsize, imgsize, 3), weights='imagenet', include_top=False, classes=len(dirs))
+# Load pretrained model
+base_model = MobileNetV2(input_shape=(imgsize, imgsize, 3), weights='imagenet', include_top=False,
+                         classes=classes_number)
+# Conv_1 is the name of the last convolutional layer
 for layer in base_model.layers:
     if layer.get_config()['name'] == 'Conv_1':
         layer.trainable = True
@@ -110,21 +70,21 @@ for layer in base_model.layers:
 model = Sequential()
 model.add(base_model)
 model.add(layers.GlobalAveragePooling2D())
-model.add(layers.Dense(len(dirs), activation='softmax', use_bias=True, name='Logits'))
+model.add(layers.Dense(classes_number, activation='softmax', use_bias=True, name='Logits'))
 
-# Punkt 2
-# Conv_1 is the name of the last convolutional layer
+# Train classifying layer
 layers_to_train = ['Logits']
 
 for layer in model.layers:
     if layer.get_config()['name'] in layers_to_train:
         layer.trainable = True
 
+# Print model summaries
 model.summary()
-
 SVG(model_to_dot(model).create(prog='dot', format='svg'))
 plot_model(model, to_file='model_plot_2.png', show_shapes=True, show_layer_names=True)
 
+# Callbacks
 # Save to file learning data after each epoch
 checkpoint = ModelCheckpoint(
     './base.model_2',
@@ -180,18 +140,18 @@ model.compile(
 )
 # -----------Training------------#
 history = model.fit_generator(
-    augs_gen.flow(x_train, y_train, batch_size=16),
-    validation_data=augs_gen.flow(x_val, y_val, batch_size=len(x_val)),
-    steps_per_epoch=ceil(len(x_train) / 16),
-    validation_steps=ceil(len(x_val) / 32),
-    epochs=50,
+    train_generator,
+    steps_per_epoch=train_samples_number / batch_size,
+    validation_data=val_generator,
+    validation_steps=val_samples_number / batch_size,
+    epochs=epochs,
     verbose=2,
     callbacks=callbacks
 )
 
 show_final_history(history)
 model.load_weights('./base.model_2')
-model_score = model.evaluate_generator(augs_gen.flow(x_test, y_test, batch_size=32), steps=ceil(len(x_test) / 32))
+model_score = model.evaluate_generator(test_generator, steps=test_samples_number / batch_size)
 print("Model Test Loss:", model_score[0])
 print("Model Test Accuracy:", model_score[1])
 
