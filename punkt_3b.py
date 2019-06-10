@@ -1,4 +1,4 @@
-import os, cv2
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -8,7 +8,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_report
 
-from tqdm import tqdm
 from IPython.display import SVG
 
 from keras.utils.vis_utils import model_to_dot
