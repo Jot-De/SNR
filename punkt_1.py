@@ -17,8 +17,8 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, CSVLogg
 from keras import layers
 
 # os.chdir("C:\\Users\\Janek\\Desktop\\EITI\\SNR\\klasyfikacja psów\\code")
-os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
-os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
+# os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
+os.chdir("C:\\Users\\Marcin  Piotrek\\Desktop\\SNR\\Projekt")
 # image_dir = '../input/images/dataset/'
 # image_dir = '../input/images/Images_3'
 train_dir = '../input/images/dataset/train/'
