@@ -17,8 +17,8 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, CSVLogg
 from keras import layers
 
 # os.chdir("C:\\Users\\Janek\\Desktop\\EITI\\SNR\\klasyfikacja psów\\code")
-# os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
-os.chdir("C:\\Users\\Marcin  Piotrek\\Desktop\\SNR\\Projekt")
+os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
+# os.chdir("C:\\Users\\Marcin  Piotrek\\Desktop\\SNR\\Projekt")
 # image_dir = '../input/images/dataset/'
 # image_dir = '../input/images/Images_3'
 train_dir = '../input/images/dataset/train/'
@@ -166,8 +166,8 @@ def evaluate(model, test_generator):
     test_generator.reset()
     predictions = model.predict_generator(test_generator, steps=test_samples_number)
     predictions_labels = np.argmax(predictions, axis=1)
-    print("Confusion matrix")
-    print(confusion_matrix(test_generator.classes, y_pred=predictions_labels))
+    with open("confusion_matrix_1.csv", "w") as file:
+        np.savetxt(file, confusion_matrix(test_generator.classes, y_pred=predictions_labels), fmt="%d", delimiter=",")
     print('Classification Report')
     target_names = test_generator.class_indices.keys()
     print(classification_report(test_generator.classes, predictions_labels, target_names=target_names))

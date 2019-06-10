@@ -179,8 +179,8 @@ def evaluate(model, test_generator):
 
     predictions = model.predict_generator(test_generator, steps=test_samples_number / batch_size)
     predictions_labels = np.argmax(predictions, axis=1)
-    print("Confusion matrix")
-    print(confusion_matrix(test_generator.classes, y_pred=predictions_labels))
+    with open("confusion_matrix_2.csv", "w") as file:
+        np.savetxt(file, confusion_matrix(test_generator.classes, y_pred=predictions_labels), delimiter=",")
     print('Classification Report')
     target_names = test_generator.class_indices.keys()
     print(classification_report(test_generator.classes, predictions_labels, target_names=target_names))
