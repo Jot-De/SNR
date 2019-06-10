@@ -44,120 +44,139 @@ def show_final_history(history):
     ax[1].legend()
 
 
-# Data generators - rescale to change pixel values from 0-255 to 0-1
-train_datagen = ImageDataGenerator(rescale=1. / 255)
-val_datagen = ImageDataGenerator(rescale=1. / 255)
-test_datagen = ImageDataGenerator(rescale=1. / 255)
+def setup():
+    # Data generators - rescale to change pixel values from 0-255 to 0-1
+    train_datagen = ImageDataGenerator(rescale=1. / 255)
+    val_datagen = ImageDataGenerator(rescale=1. / 255)
+    test_datagen = ImageDataGenerator(rescale=1. / 255)
 
-# Generate batches of images on demand from directories
-train_generator = train_datagen.flow_from_directory(train_dir, target_size=(imgsize, imgsize), class_mode='sparse',
+    # Generate batches of images on demand from directories
+    train_generator = train_datagen.flow_from_directory(train_dir, target_size=(imgsize, imgsize), class_mode='sparse',
+                                                        batch_size=batch_size)
+    val_generator = val_datagen.flow_from_directory(val_dir, target_size=(imgsize, imgsize), class_mode='sparse',
                                                     batch_size=batch_size)
-val_generator = train_datagen.flow_from_directory(val_dir, target_size=(imgsize, imgsize), class_mode='sparse',
-                                                  batch_size=batch_size)
-test_generator = train_datagen.flow_from_directory(test_dir, target_size=(imgsize, imgsize), class_mode='sparse',
-                                                   batch_size=batch_size)
+    test_generator = test_datagen.flow_from_directory(test_dir, target_size=(imgsize, imgsize), class_mode='sparse',
+                                                      batch_size=batch_size)
 
-# Load pretrained model
-base_model = MobileNetV2(input_shape=(imgsize, imgsize, 3), weights='imagenet', include_top=False,
-                         classes=classes_number)
-# Conv_1 is the name of the last convolutional layer
-for layer in base_model.layers:
-    if layer.get_config()['name'] == 'Conv_1':
-        layer.trainable = True
-    else:
-        layer.trainable = False
-# Create own classifier head
-model = Sequential()
-model.add(base_model)
-model.add(layers.GlobalAveragePooling2D())
-model.add(layers.Dense(classes_number, activation='softmax', use_bias=True, name='Logits'))
+    return train_generator, val_generator, test_generator
 
-# Train classifying layer
-layers_to_train = ['Logits']
 
-for layer in model.layers:
-    if layer.get_config()['name'] in layers_to_train:
-        layer.trainable = True
+def create_model():
+    # Load pretrained model
+    base_model = MobileNetV2(input_shape=(imgsize, imgsize, 3), weights='imagenet', include_top=False,
+                             classes=classes_number)
+    # Conv_1 is the name of the last convolutional layer
+    for layer in base_model.layers:
+        if layer.get_config()['name'] == 'Conv_1':
+            layer.trainable = True
+        else:
+            layer.trainable = False
+    # Create own classifier head
+    model = Sequential()
+    model.add(base_model)
+    model.add(layers.GlobalAveragePooling2D())
+    model.add(layers.Dense(classes_number, activation='softmax', use_bias=True, name='Logits'))
 
-# Print model summaries
-model.summary()
-SVG(model_to_dot(model).create(prog='dot', format='svg'))
-plot_model(model, to_file='model_plot_2.png', show_shapes=True, show_layer_names=True)
+    # Train classifying layer
+    layers_to_train = ['Logits']
 
-# Callbacks
-# Save to file learning data after each epoch
-checkpoint = ModelCheckpoint(
-    './base.model_2',
-    monitor='val_loss',
-    verbose=1,
-    save_best_only=True,
-    mode='min',
-    save_weights_only=False,
-    period=1
-)
-# Stop training when a monitored quantity has stopped improving.
-earlystop = EarlyStopping(
-    monitor='val_loss',
-    min_delta=0.01,
-    patience=10,
-    verbose=1,
-    mode='auto'
-)
-# Log history of teaching
-tensorboard = TensorBoard(
-    log_dir='./logs_2',
-    histogram_freq=0,
-    batch_size=16,
-    write_graph=True,
-    write_grads=True,
-    write_images=False,
-)
-# Logs of learning
-csvlogger = CSVLogger(
-    filename="training_csv_2.log",
-    separator=",",
-    append=False
-)
-# Reduce learning rate when a metric has stopped improving.
-reduce = ReduceLROnPlateau(
-    monitor='val_loss',
-    factor=0.1,
-    patience=5,
-    verbose=1,
-    mode='auto'
-)
+    for layer in model.layers:
+        if layer.get_config()['name'] in layers_to_train:
+            layer.trainable = True
 
-callbacks = [checkpoint, tensorboard, csvlogger, reduce, earlystop]
+    # Print model summaries
+    model.summary()
+    SVG(model_to_dot(model).create(prog='dot', format='svg'))
+    plot_model(model, to_file='model_plot_2.png', show_shapes=True, show_layer_names=True)
 
-# -----------Optimizers-----------#
-opt1 = SGD(lr=1e-4, momentum=0.99)
-opt = Adam(lr=1e-3)
-# ----------Compile---------------#
-model.compile(
-    loss='sparse_categorical_crossentropy',
-    optimizer=opt,
-    metrics=['accuracy']
-)
-# -----------Training------------#
-history = model.fit_generator(
-    train_generator,
-    steps_per_epoch=train_samples_number / batch_size,
-    validation_data=val_generator,
-    validation_steps=val_samples_number / batch_size,
-    epochs=epochs,
-    verbose=2,
-    callbacks=callbacks
-)
+    return model
 
-show_final_history(history)
-model.load_weights('./base.model_2')
-model_score = model.evaluate_generator(test_generator, steps=test_samples_number / batch_size)
-print("Model Test Loss:", model_score[0])
-print("Model Test Accuracy:", model_score[1])
 
-model_json = model.to_json()
-with open("model_2.json", "w") as json_file:
-    json_file.write(model_json)
+def train(model, train_generator, val_generator):
+    # Callbacks
+    # Save to file learning data after each epoch
+    checkpoint = ModelCheckpoint(
+        './base.model_2',
+        monitor='val_loss',
+        verbose=1,
+        save_best_only=True,
+        mode='min',
+        save_weights_only=False,
+        period=1
+    )
+    # Stop training when a monitored quantity has stopped improving.
+    earlystop = EarlyStopping(
+        monitor='val_loss',
+        min_delta=0.01,
+        patience=10,
+        verbose=1,
+        mode='auto'
+    )
+    # Log history of teaching
+    tensorboard = TensorBoard(
+        log_dir='./logs_2',
+        histogram_freq=0,
+        batch_size=16,
+        write_graph=True,
+        write_grads=True,
+        write_images=False,
+    )
+    # Logs of learning
+    csvlogger = CSVLogger(
+        filename="training_csv_2.log",
+        separator=",",
+        append=False
+    )
+    # Reduce learning rate when a metric has stopped improving.
+    reduce = ReduceLROnPlateau(
+        monitor='val_loss',
+        factor=0.1,
+        patience=5,
+        verbose=1,
+        mode='auto'
+    )
 
-model.save("model_2.h5")
-print("Weights Saved")
+    callbacks = [checkpoint, tensorboard, csvlogger, reduce, earlystop]
+
+    # -----------Optimizers-----------#
+    opt1 = SGD(lr=1e-4, momentum=0.99)
+    opt = Adam(lr=1e-3)
+    # ----------Compile---------------#
+    model.compile(
+        loss='sparse_categorical_crossentropy',
+        optimizer=opt,
+        metrics=['accuracy']
+    )
+    # -----------Training------------#
+    history = model.fit_generator(
+        train_generator,
+        steps_per_epoch=train_samples_number / batch_size,
+        validation_data=val_generator,
+        validation_steps=val_samples_number / batch_size,
+        epochs=epochs,
+        verbose=2,
+        callbacks=callbacks
+    )
+
+    show_final_history(history)
+
+
+def evaluate(model, test_generator):
+    model.load_weights('./base.model_2')
+    model_score = model.evaluate_generator(test_generator, steps=test_samples_number / batch_size)
+    print("Model Test Loss:", model_score[0])
+    print("Model Test Accuracy:", model_score[1])
+
+    model_json = model.to_json()
+    with open("model_2.json", "w") as json_file:
+        json_file.write(model_json)
+
+    model.save("model_2.h5")
+    print("Weights Saved")
+
+
+if __name__ == '__main__':
+    train_generator, val_generator, test_generator = setup()
+    model = create_model()
+    train(model, train_generator, val_generator)
+    evaluate(model, test_generator)

@@ -23,14 +23,19 @@ from keras import layers
 
 # os.chdir("C:\\Users\\Janek\\Desktop\\EITI\\SNR\\klasyfikacja psów\\code")
 os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
-# image_dir = '../input/images/Images/'
-image_dir = '../input/images/Images_3'
+# image_dir = '../input/images/dataset/'
+# image_dir = '../input/images/Images_3'
+train_dir = '../input/images/dataset/train/'
+val_dir = '../input/images/dataset/val/'
+test_dir = '../input/images/dataset/test/'
 
-dirs = os.listdir(image_dir)
-
-X = []
-Z = []
 imgsize = 224
+batch_size = 16
+epochs = 50
+classes_number = 120
+train_samples_number = 16418
+val_samples_number = 2009
+test_samples_number = 2153
 
 
 def show_final_history(history):
@@ -45,145 +50,120 @@ def show_final_history(history):
     ax[1].legend()
 
 
-def label_assignment(img, label):
-    return label
+def setup():
+    # Data generators - rescale to change pixel values from 0-255 to 0-1
+    train_datagen = ImageDataGenerator(rescale=1. / 255)
+    val_datagen = ImageDataGenerator(rescale=1. / 255)
+    test_datagen = ImageDataGenerator(rescale=1. / 255)
+
+    # Generate batches of images on demand from directories
+    train_generator = train_datagen.flow_from_directory(train_dir, target_size=(imgsize, imgsize), class_mode='sparse',
+                                                        batch_size=batch_size)
+    val_generator = val_datagen.flow_from_directory(val_dir, target_size=(imgsize, imgsize), class_mode='sparse',
+                                                    batch_size=batch_size)
+    test_generator = test_datagen.flow_from_directory(test_dir, target_size=(imgsize, imgsize), class_mode='sparse',
+                                                      batch_size=batch_size)
+
+    return train_generator, val_generator, test_generator
 
 
-def training_data(label, data_dir):
-    """
-    Load data and puts into an array with label
-    :param label:
-    :param data_dir:
-    :return:
-    """
-    for img in tqdm(os.listdir(data_dir)):
-        label = label_assignment(img, label)
-        path = os.path.join(data_dir, img)
-        img = cv2.imread(path, cv2.IMREAD_COLOR)
-        img = cv2.resize(img, (imgsize, imgsize))
+def create_model():
+    model = load_model("model_3.h5")
+    # layers_to_del = ['Conv_1', 'Conv_1_bn', 'out_relu']
+    model.layers[0].pop()
+    model.layers[0].pop()
+    model.layers[0].pop()
 
-        X.append(np.array(img))
-        Z.append(str(label))
+    model.summary()
+
+    SVG(model_to_dot(model).create(prog='dot', format='svg'))
+    plot_model(model, to_file='model_plot_3b.png', show_shapes=True, show_layer_names=True)
+    return model
 
 
-for dir_name in dirs:
-    """
-    Iterates through directories
-    """
-    full_dir = os.path.join(image_dir, dir_name)
-    label = dir_name.split(sep='-', maxsplit=1)[1]
-    training_data(label, full_dir)
+def train(model, train_generator, val_generator):
+    # Save to file learning data after each epoch
+    checkpoint = ModelCheckpoint(
+        './base.model_3b',
+        monitor='val_loss',
+        verbose=1,
+        save_best_only=True,
+        mode='min',
+        save_weights_only=False,
+        period=1
+    )
+    # Stop training when a monitored quantity has stopped improving.
+    earlystop = EarlyStopping(
+        monitor='val_loss',
+        min_delta=0.001,
+        patience=30,
+        verbose=1,
+        mode='auto'
+    )
+    # Log history of teaching
+    tensorboard = TensorBoard(
+        log_dir='./logs_3b',
+        histogram_freq=0,
+        batch_size=16,
+        write_graph=True,
+        write_grads=True,
+        write_images=False,
+    )
+    # Logs of learning
+    csvlogger = CSVLogger(
+        filename="training_csv_3b.log",
+        separator=",",
+        append=False
+    )
+    # Reduce learning rate when a metric has stopped improving.
+    reduce = ReduceLROnPlateau(
+        monitor='val_loss',
+        factor=0.1,
+        patience=5,
+        verbose=1,
+        mode='auto'
+    )
 
-X = np.array(X)
-label_encoder = LabelEncoder()
-Y = label_encoder.fit_transform(Z)
-del Z
+    callbacks = [checkpoint, tensorboard, csvlogger, reduce, earlystop]
 
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.4, random_state=69)
-del X
-del Y
-x_val, x_test, y_val, y_test = train_test_split(x_test, y_test, test_size=0.5, random_state=13)
-# Rescale to change pixel values from 0-255 to 0-1
-augs_gen = ImageDataGenerator(
-    rescale=1. / 255,
-    featurewise_center=False,
-    samplewise_center=False,
-    featurewise_std_normalization=False,
-    samplewise_std_normalization=False,
-    zca_whitening=False,
-    rotation_range=0,
-    zoom_range=0,
-    width_shift_range=0,
-    height_shift_range=0,
-    horizontal_flip=False,
-    vertical_flip=False)
+    # -----------Optimizers-----------#
+    opt1 = SGD(lr=1e-4, momentum=0.99)
+    opt = Adam(lr=1e-2)
+    # ----------Compile---------------#
+    model.compile(
+        loss='sparse_categorical_crossentropy',
+        optimizer=opt,
+        metrics=['accuracy']
+    )
+    # -----------Training------------#
+    history = model.fit_generator(
+        train_generator,
+        steps_per_epoch=train_samples_number / batch_size,
+        validation_data=val_generator,
+        validation_steps=val_samples_number / batch_size,
+        epochs=epochs,
+        verbose=2,
+        callbacks=callbacks
+    )
+    show_final_history(history)
 
-augs_gen.fit(x_train)
 
-model = load_model("model_3.h5")
-# layers_to_del = ['Conv_1', 'Conv_1_bn', 'out_relu']
-model.layers[0].pop()
-model.layers[0].pop()
-model.layers[0].pop()
+def evaluate(model, test_generator):
+    model.load_weights('./base.model_3b')
+    model_score = model.evaluate_generator(test_generator, steps=test_samples_number / batch_size)
+    print("Model Test Loss:", model_score[0])
+    print("Model Test Accuracy:", model_score[1])
 
-model.summary()
+    model_json = model.to_json()
+    with open("model_3b.json", "w") as json_file:
+        json_file.write(model_json)
 
-SVG(model_to_dot(model).create(prog='dot', format='svg'))
-plot_model(model, to_file='model_plot_3b.png', show_shapes=True, show_layer_names=True)
+    model.save("model_3b.h5")
+    print("Weights Saved")
 
-# Save to file learning data after each epoch
-checkpoint = ModelCheckpoint(
-    './base.model_3b',
-    monitor='val_loss',
-    verbose=1,
-    save_best_only=True,
-    mode='min',
-    save_weights_only=False,
-    period=1
-)
-# Stop training when a monitored quantity has stopped improving.
-earlystop = EarlyStopping(
-    monitor='val_loss',
-    min_delta=0.001,
-    patience=30,
-    verbose=1,
-    mode='auto'
-)
-# Log history of teaching
-tensorboard = TensorBoard(
-    log_dir='./logs_3b',
-    histogram_freq=0,
-    batch_size=16,
-    write_graph=True,
-    write_grads=True,
-    write_images=False,
-)
-# Logs of learning
-csvlogger = CSVLogger(
-    filename="training_csv_3b.log",
-    separator=",",
-    append=False
-)
-# Reduce learning rate when a metric has stopped improving.
-reduce = ReduceLROnPlateau(
-    monitor='val_loss',
-    factor=0.1,
-    patience=5,
-    verbose=1,
-    mode='auto'
-)
 
-callbacks = [checkpoint, tensorboard, csvlogger, reduce, earlystop]
-
-# -----------Optimizers-----------#
-opt1 = SGD(lr=1e-4, momentum=0.99)
-opt = Adam(lr=1e-2)
-# ----------Compile---------------#
-model.compile(
-    loss='sparse_categorical_crossentropy',
-    optimizer=opt,
-    metrics=['accuracy']
-)
-# -----------Training------------#
-history = model.fit_generator(
-    augs_gen.flow(x_train, y_train, batch_size=16),
-    validation_data=augs_gen.flow(x_val, y_val, batch_size=len(x_val)),
-    steps_per_epoch=ceil(len(x_train) / 16),
-    validation_steps=ceil(len(x_val) / 32),
-    epochs=3,
-    verbose=2,
-    callbacks=callbacks
-)
-
-show_final_history(history)
-model.load_weights('./base.model_3b')
-model_score = model.evaluate_generator(augs_gen.flow(x_test, y_test, batch_size=32), steps=ceil(len(x_test) / 32))
-print("Model Test Loss:", model_score[0])
-print("Model Test Accuracy:", model_score[1])
-
-model_json = model.to_json()
-with open("model_3b.json", "w") as json_file:
-    json_file.write(model_json)
-
-model.save("model_3b.h5")
-print("Weights Saved")
+if __name__ == '__main__':
+    train_generator, val_generator, test_generator = setup()
+    model = create_model()
+    train(model, train_generator, val_generator)
+    evaluate(model, test_generator)
