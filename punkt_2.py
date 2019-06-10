@@ -139,17 +139,17 @@ model.compile(
     metrics=['accuracy']
 )
 # -----------Training------------#
-# history = model.fit_generator(
-#     train_generator,
-#     steps_per_epoch=train_samples_number / batch_size,
-#     validation_data=val_generator,
-#     validation_steps=val_samples_number / batch_size,
-#     epochs=epochs,
-#     verbose=2,
-#     callbacks=callbacks
-# )
+history = model.fit_generator(
+    train_generator,
+    steps_per_epoch=train_samples_number / batch_size,
+    validation_data=val_generator,
+    validation_steps=val_samples_number / batch_size,
+    epochs=epochs,
+    verbose=2,
+    callbacks=callbacks
+)
 
-# show_final_history(history)
+show_final_history(history)
 model.load_weights('./base.model_2')
 model_score = model.evaluate_generator(test_generator, steps=test_samples_number / batch_size)
 print("Model Test Loss:", model_score[0])
