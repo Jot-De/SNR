@@ -56,9 +56,9 @@ def setup():
     train_generator = train_datagen.flow_from_directory(train_dir, target_size=(imgsize, imgsize), class_mode='sparse',
                                                         batch_size=batch_size)
     val_generator = val_datagen.flow_from_directory(val_dir, target_size=(imgsize, imgsize), class_mode='sparse',
-                                                    batch_size=batch_size)
+                                                    batch_size=batch_size, shuffle=False)
     test_generator = test_datagen.flow_from_directory(test_dir, target_size=(imgsize, imgsize), class_mode='sparse',
-                                                      batch_size=1)
+                                                      batch_size=1, shuffle=False)
 
     return train_generator, val_generator, test_generator
 
