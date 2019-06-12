@@ -18,10 +18,12 @@ from keras.optimizers import Adam, SGD
 from keras.utils.vis_utils import plot_model
 from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, CSVLogger, ReduceLROnPlateau, \
     LearningRateScheduler
+from keras.metrics import sparse_categorical_accuracy, sparse_top_k_categorical_accuracy
 from keras import layers
 
 # os.chdir("C:\\Users\\Janek\\Desktop\\EITI\\SNR\\klasyfikacja psów\\code")
-os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
+# os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
+os.chdir("C:\\Users\\Marcin  Piotrek\\Desktop\\SNR\\Projekt")
 # image_dir = '../input/images/dataset/'
 # image_dir = '../input/images/Images_3'
 train_dir = '../input/images/dataset/train/'
@@ -29,7 +31,7 @@ val_dir = '../input/images/dataset/val/'
 test_dir = '../input/images/dataset/test/'
 
 imgsize = 224
-batch_size = 16
+batch_size = 4
 epochs = 50
 classes_number = 120
 train_samples_number = 16418
@@ -59,9 +61,9 @@ def setup():
     train_generator = train_datagen.flow_from_directory(train_dir, target_size=(imgsize, imgsize), class_mode='sparse',
                                                         batch_size=batch_size)
     val_generator = val_datagen.flow_from_directory(val_dir, target_size=(imgsize, imgsize), class_mode='sparse',
-                                                    batch_size=batch_size)
+                                                    batch_size=batch_size, shuffle=False)
     test_generator = test_datagen.flow_from_directory(test_dir, target_size=(imgsize, imgsize), class_mode='sparse',
-                                                      batch_size=batch_size)
+                                                      batch_size=1, shuffle=False)
 
     return train_generator, val_generator, test_generator
 
@@ -79,12 +81,12 @@ def create_model():
     plot_model(model, to_file='model_plot_3b.png', show_shapes=True, show_layer_names=True)
     # -----------Optimizers-----------#
     opt1 = SGD(lr=1e-4, momentum=0.99)
-    opt = Adam(lr=1e-2)
+    opt = Adam(lr=1e-4)
     # ----------Compile---------------#
     model.compile(
         loss='sparse_categorical_crossentropy',
         optimizer=opt,
-        metrics=['accuracy']
+        metrics=[sparse_categorical_accuracy, sparse_top_k_categorical_accuracy]
     )
     return model
 
@@ -93,7 +95,7 @@ def train(model, train_generator, val_generator):
     # Save to file learning data after each epoch
     checkpoint = ModelCheckpoint(
         './base.model_3b',
-        monitor='val_loss',
+        monitor='val_sparse_categorical_accuracy',
         verbose=1,
         save_best_only=True,
         mode='min',
@@ -102,8 +104,8 @@ def train(model, train_generator, val_generator):
     )
     # Stop training when a monitored quantity has stopped improving.
     earlystop = EarlyStopping(
-        monitor='val_loss',
-        min_delta=0.001,
+        monitor='val_sparse_categorical_accuracy',
+        min_delta=0.1,
         patience=20,
         verbose=1,
         mode='auto'
@@ -112,7 +114,7 @@ def train(model, train_generator, val_generator):
     tensorboard = TensorBoard(
         log_dir='./logs_3b',
         histogram_freq=0,
-        batch_size=16,
+        batch_size=batch_size,
         write_graph=True,
         write_grads=True,
         write_images=False,
@@ -148,14 +150,19 @@ def train(model, train_generator, val_generator):
 
 def evaluate(model, test_generator):
     model.load_weights('./base.model_3b')
-    model_score = model.evaluate_generator(test_generator, steps=test_samples_number / batch_size)
+    # Reset generator for correct samples order
+    test_generator.reset()
+    # Test generator gives one sample per step
+    model_score = model.evaluate_generator(test_generator, steps=test_samples_number)
     print("Model Test Loss:", model_score[0])
     print("Model Test Accuracy:", model_score[1])
+    print("Model Test Top-5 Accuracy", model_score[2])
 
-    predictions = model.predict_generator(test_generator, steps=test_samples_number / batch_size)
+    test_generator.reset()
+    predictions = model.predict_generator(test_generator, steps=test_samples_number)
     predictions_labels = np.argmax(predictions, axis=1)
-    print("Confusion matrix")
-    print(confusion_matrix(test_generator.classes, y_pred=predictions_labels))
+    with open("confusion_matrix_3b.csv", "w") as file:
+        np.savetxt(file, confusion_matrix(test_generator.classes, y_pred=predictions_labels), delimiter=",")
     print('Classification Report')
     target_names = test_generator.class_indices.keys()
     print(classification_report(test_generator.classes, predictions_labels, target_names=target_names))
