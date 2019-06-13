@@ -71,14 +71,12 @@ def setup():
 def create_model():
     model = load_model("model_3.h5")
     # layers_to_del = ['Conv_1', 'Conv_1_bn', 'out_relu']
-    model.layers[0].pop()
-    model.layers[0].pop()
-    model.layers[0].pop()
+    model.layers[0].layers.pop()
+    model.layers[0].layers.pop()
+    model.layers[0].layers.pop()
 
-    model.summary()
-
-    SVG(model_to_dot(model).create(prog='dot', format='svg'))
-    plot_model(model, to_file='model_plot_3b.png', show_shapes=True, show_layer_names=True)
+    # SVG(model_to_dot(model).create(prog='dot', format='svg'))
+    # plot_model(model, to_file='model_plot_3b.png', show_shapes=True, show_layer_names=True)
     # -----------Optimizers-----------#
     opt1 = SGD(lr=1e-4, momentum=0.99)
     opt = Adam(lr=1e-4)
@@ -88,6 +86,8 @@ def create_model():
         optimizer=opt,
         metrics=[sparse_categorical_accuracy, sparse_top_k_categorical_accuracy]
     )
+
+    model.summary()
     return model
 
 
