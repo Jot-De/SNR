@@ -164,7 +164,7 @@ def train(model, train_generator, val_generator):
         monitor='val_sparse_categorical_accuracy',
         verbose=1,
         save_best_only=True,
-        mode='min',
+        mode='max',
         save_weights_only=False,
         period=1
     )
