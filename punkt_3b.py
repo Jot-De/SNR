@@ -12,7 +12,7 @@ from IPython.display import SVG
 
 from keras.utils.vis_utils import model_to_dot
 from keras.applications.mobilenet_v2 import MobileNetV2
-from keras.models import Sequential, load_model
+from keras.models import Sequential, load_model, Model
 from keras.preprocessing.image import ImageDataGenerator
 from keras.optimizers import Adam, SGD
 from keras.utils.vis_utils import plot_model
@@ -20,6 +20,7 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, CSVLogg
     LearningRateScheduler
 from keras.metrics import sparse_categorical_accuracy, sparse_top_k_categorical_accuracy
 from keras import layers
+from keras.layers.advanced_activations import ReLU
 
 # os.chdir("C:\\Users\\Janek\\Desktop\\EITI\\SNR\\klasyfikacja psów\\code")
 # os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
@@ -69,11 +70,27 @@ def setup():
 
 
 def create_model():
-    model = load_model("model_3.h5")
-    # layers_to_del = ['Conv_1', 'Conv_1_bn', 'out_relu']
-    model.layers[0].layers.pop()
-    model.layers[0].layers.pop()
-    model.layers[0].layers.pop()
+    base_model = load_model("model_3.h5")
+    # the output layer is 'block_16_depthwise_relu
+    layers_to_del = ['input_1', 'block_15_expand', 'block_15_expand_relu', 'block_15_depthwise',
+                     'block_15_depthwise_relu' 'block_15_project', 'block_15_project_BN']
+    model = layers.Input(shape=(imgsize, imgsize, 3))
+    for mobilenet_layer in base_model.layers[0].layers:
+        if mobilenet_layer.name not in layers_to_del:
+            model = base_model.layers[0].get_layer(mobilenet_layer.name)(model)
+    model = base_model.get_layer(1)(model)
+    model = base_model.get_layer(2)(model)
+    # base_model.layers[0].layers.pop()
+    # base_model.layers[0].layers.pop()
+    # base_model.layers[0].layers.pop()
+    # base_model.layers[0].layers.pop()
+    # base_model.layers[0].layers.pop()
+    # base_model.layers.pop()
+    # base_model.layers.pop()
+    # # Classification head
+    # pooling = layers.GlobalAveragePooling2D()(base_model.layers[0].get_layer('block_16_depthwise_relu').output)
+    # out = layers.Dense(classes_number, activation='softmax', use_bias=True, name='Logits')(pooling)
+    # model = Model(input=base_model.layers[0].get_input_at(0), output=[out])
 
     # SVG(model_to_dot(model).create(prog='dot', format='svg'))
     # plot_model(model, to_file='model_plot_3b.png', show_shapes=True, show_layer_names=True)
@@ -86,6 +103,8 @@ def create_model():
         optimizer=opt,
         metrics=[sparse_categorical_accuracy, sparse_top_k_categorical_accuracy]
     )
+
+    # model.set_weights(base_model.get_weights())
 
     model.summary()
     return model
