@@ -20,7 +20,7 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, CSVLogg
     LearningRateScheduler
 from keras.metrics import sparse_categorical_accuracy, sparse_top_k_categorical_accuracy
 from keras import layers
-from keras.layers.advanced_activations import ReLU
+
 
 # os.chdir("C:\\Users\\Janek\\Desktop\\EITI\\SNR\\klasyfikacja psów\\code")
 # os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
@@ -72,14 +72,62 @@ def setup():
 def create_model():
     base_model = load_model("model_3.h5")
     # the output layer is 'block_16_depthwise_relu
-    layers_to_del = ['input_1', 'block_15_expand', 'block_15_expand_relu', 'block_15_depthwise',
-                     'block_15_depthwise_relu' 'block_15_project', 'block_15_project_BN']
-    model = layers.Input(shape=(imgsize, imgsize, 3))
-    for mobilenet_layer in base_model.layers[0].layers:
-        if mobilenet_layer.name not in layers_to_del:
-            model = base_model.layers[0].get_layer(mobilenet_layer.name)(model)
-    model = base_model.get_layer(1)(model)
-    model = base_model.get_layer(2)(model)
+    # layers_to_del = ['input_1', 'block_15_expand', 'block_15_expand_relu', 'block_15_depthwise',
+    #                  'block_15_depthwise_relu' 'block_15_project', 'block_15_project_BN']
+    # model = layers.Input(shape=(imgsize, imgsize, 3))
+    # for mobilenet_layer in base_model.layers[0].layers:
+    #     if mobilenet_layer.name not in layers_to_del:
+    #         model = base_model.layers[0].get_layer(mobilenet_layer.name)(model)
+    # model = base_model.get_layer(1)(model)
+    # model = base_model.get_layer(2)(model)
+
+    layers_1_14 = Model(inputs=base_model.layers[0].get_input_at(0),
+                        outputs=base_model.layers[0].get_layer('block_14_depthwise_relu').output)
+    x = layers.Conv2D(960,
+                      kernel_size=1,
+                      padding='same',
+                      use_bias=False,
+                      activation=None,
+                      name='block_16_' + 'expand')(layers_1_14.output)
+    x = layers.BatchNormalization(axis=-1,
+                                  epsilon=1e-3,
+                                  momentum=0.999,
+                                  name='block_16_' + 'expand_BN')(x)
+    x = layers.ReLU(6., name='block_16_' + 'expand_relu')(x)
+    x = layers.DepthwiseConv2D(kernel_size=3,
+                               strides=1,
+                               activation=None,
+                               use_bias=False,
+                               padding='same',
+                               name='block_16_' + 'depthwise')(x)
+    x = layers.BatchNormalization(axis=-1,
+                                  epsilon=1e-3,
+                                  momentum=0.999,
+                                  name='block_16_' + 'depthwise_BN')(x)
+    x = layers.ReLU(6., name='block_16_' + 'depthwise_relu')(x)
+    x = layers.Conv2D(320,
+                      kernel_size=1,
+                      padding='same',
+                      use_bias=False,
+                      activation=None,
+                      name='block_16_' + 'project')(x)
+    x = layers.BatchNormalization(axis=-1,
+                                  epsilon=1e-3,
+                                  momentum=0.999,
+                                  name='block_16_' + 'project_BN')(x)
+    x = layers.Conv2D(1280,
+                      kernel_size=1,
+                      use_bias=False,
+                      name='Conv_1')(x)
+    x = layers.BatchNormalization(axis=-1,
+                                  epsilon=1e-3,
+                                  momentum=0.999,
+                                  name='Conv_1_bn')(x)
+    x = layers.ReLU(6., name='out_relu')(x)
+    pooling = layers.GlobalAveragePooling2D()(x)
+    out = layers.Dense(classes_number, activation='softmax', use_bias=True, name='Logits')(pooling)
+    model = Model(inputs=layers_1_14.input, outputs=[out])
+
     # base_model.layers[0].layers.pop()
     # base_model.layers[0].layers.pop()
     # base_model.layers[0].layers.pop()
@@ -88,8 +136,7 @@ def create_model():
     # base_model.layers.pop()
     # base_model.layers.pop()
     # # Classification head
-    # pooling = layers.GlobalAveragePooling2D()(base_model.layers[0].get_layer('block_16_depthwise_relu').output)
-    # out = layers.Dense(classes_number, activation='softmax', use_bias=True, name='Logits')(pooling)
+
     # model = Model(input=base_model.layers[0].get_input_at(0), output=[out])
 
     # SVG(model_to_dot(model).create(prog='dot', format='svg'))
