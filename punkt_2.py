@@ -14,6 +14,7 @@ from keras.optimizers import Adam, SGD
 from keras.utils.vis_utils import plot_model
 from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, CSVLogger, ReduceLROnPlateau, \
     LearningRateScheduler
+from keras.metrics import sparse_categorical_accuracy, sparse_top_k_categorical_accuracy
 from keras import layers
 
 # os.chdir("C:\\Users\\Janek\\Desktop\\EITI\\SNR\\klasyfikacja psów\\code")
@@ -92,12 +93,12 @@ def create_model():
     # plot_model(model, to_file='model_plot_2.png', show_shapes=True, show_layer_names=True)
     # -----------Optimizers-----------#
     opt1 = SGD(lr=1e-4, momentum=0.99)
-    opt = Adam(lr=1e-3)
+    opt = Adam(lr=1e-4)
     # ----------Compile---------------#
     model.compile(
         loss='sparse_categorical_crossentropy',
         optimizer=opt,
-        metrics=['accuracy']
+        metrics=[sparse_categorical_accuracy, sparse_top_k_categorical_accuracy]
     )
     return model
 
@@ -107,17 +108,17 @@ def train(model, train_generator, val_generator):
     # Save to file learning data after each epoch
     checkpoint = ModelCheckpoint(
         './base.model_2',
-        monitor='val_loss',
+        monitor='val_sparse_categorical_accuracy',
         verbose=1,
         save_best_only=True,
-        mode='min',
+        mode='max',
         save_weights_only=False,
         period=1
     )
     # Stop training when a monitored quantity has stopped improving.
     earlystop = EarlyStopping(
-        monitor='val_loss',
-        min_delta=0.01,
+        monitor='val_sparse_categorical_accuracy',
+        min_delta=0.1,
         patience=20,
         verbose=1,
         mode='auto'
@@ -126,7 +127,7 @@ def train(model, train_generator, val_generator):
     tensorboard = TensorBoard(
         log_dir='./logs_2',
         histogram_freq=0,
-        batch_size=16,
+        batch_size=batch_size,
         write_graph=True,
         write_grads=True,
         write_images=False,
@@ -168,6 +169,7 @@ def evaluate(model, test_generator):
     model_score = model.evaluate_generator(test_generator, steps=test_samples_number)
     print("Model Test Loss:", model_score[0])
     print("Model Test Accuracy:", model_score[1])
+    print("Model Test Top-5 Accuracy", model_score[2])
 
     test_generator.reset()
     predictions = model.predict_generator(test_generator, steps=test_samples_number)

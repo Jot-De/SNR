@@ -244,5 +244,5 @@ def evaluate(model, test_generator):
 if __name__ == '__main__':
     train_generator, val_generator, test_generator = setup()
     model = create_model()
-    train(model, train_generator, val_generator)
+    # train(model, train_generator, val_generator)
     evaluate(model, test_generator)

@@ -14,11 +14,12 @@ from keras.optimizers import Adam, SGD
 from keras.utils.vis_utils import plot_model
 from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, CSVLogger, ReduceLROnPlateau, \
     LearningRateScheduler
+from keras.metrics import sparse_categorical_accuracy, sparse_top_k_categorical_accuracy
 from keras import layers
 
 # os.chdir("C:\\Users\\Janek\\Desktop\\EITI\\SNR\\klasyfikacja psów\\code")
-os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
-# os.chdir("C:\\Users\\Marcin  Piotrek\\Desktop\\SNR\\Projekt")
+# os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
+os.chdir("C:\\Users\\Marcin  Piotrek\\Desktop\\SNR\\Projekt")
 # image_dir = '../input/images/dataset/'
 # image_dir = '../input/images/Images_3'
 train_dir = '../input/images/dataset/train/'
@@ -83,17 +84,17 @@ def create_model():
 
     model.summary()
 
-    SVG(model_to_dot(model).create(prog='dot', format='svg'))
-    plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
+    # SVG(model_to_dot(model).create(prog='dot', format='svg'))
+    # plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
 
     # -----------Optimizers-----------#
     opt1 = SGD(lr=1e-4, momentum=0.99)
-    opt = Adam(lr=1e-3)
+    opt = Adam(lr=1e-4)
     # ----------Compile---------------#
     model.compile(
         loss='sparse_categorical_crossentropy',
         optimizer=opt,
-        metrics=['accuracy']
+        metrics=[sparse_categorical_accuracy, sparse_top_k_categorical_accuracy]
     )
 
     return model
@@ -102,18 +103,18 @@ def create_model():
 def train(model, train_generator, val_generator):
     # Save to file learning data after each epoch
     checkpoint = ModelCheckpoint(
-        './base.model',
-        monitor='val_loss',
+        './base.model_1',
+        monitor='val_sparse_categorical_accuracy',
         verbose=1,
         save_best_only=True,
-        mode='min',
+        mode='max',
         save_weights_only=False,
         period=1
     )
     # Stop training when a monitored quantity has stopped improving.
     earlystop = EarlyStopping(
-        monitor='val_loss',
-        min_delta=0.001,
+        monitor='val_sparse_categorical_accuracy',
+        min_delta=0.1,
         patience=20,
         verbose=1,
         mode='auto'
@@ -122,7 +123,7 @@ def train(model, train_generator, val_generator):
     tensorboard = TensorBoard(
         log_dir='./logs',
         histogram_freq=0,
-        batch_size=16,
+        batch_size=batch_size,
         write_graph=True,
         write_grads=True,
         write_images=False,
@@ -136,7 +137,7 @@ def train(model, train_generator, val_generator):
     # Reduce learning rate when a metric has stopped improving.
     reduce = ReduceLROnPlateau(
         monitor='val_loss',
-        factor=0.1,
+        factor=0.5,
         patience=5,
         verbose=1,
         mode='auto'
@@ -153,15 +154,16 @@ def train(model, train_generator, val_generator):
         verbose=2,
         callbacks=callbacks
     )
-    show_final_history(history)
+    # show_final_history(history)
 
 
 def evaluate(model, test_generator):
-    model.load_weights('./base.model')
+    model.load_weights('./base.model_1')
     test_generator.reset()
     model_score = model.evaluate_generator(test_generator, steps=test_samples_number)
     print("Model Test Loss:", model_score[0])
     print("Model Test Accuracy:", model_score[1])
+    print("Model Test Top-5 Accuracy", model_score[2])
 
     test_generator.reset()
     predictions = model.predict_generator(test_generator, steps=test_samples_number)
@@ -173,15 +175,15 @@ def evaluate(model, test_generator):
     print(classification_report(test_generator.classes, predictions_labels, target_names=target_names))
 
     model_json = model.to_json()
-    with open("model.json", "w") as json_file:
+    with open("model_1.json", "w") as json_file:
         json_file.write(model_json)
 
-    model.save("model.h5")
+    model.save("model_1.h5")
     print("Weights Saved")
 
 
 if __name__ == '__main__':
     train_generator, val_generator, test_generator = setup()
     model = create_model()
-    # train(model, train_generator, val_generator)
+    train(model, train_generator, val_generator)
     evaluate(model, test_generator)
