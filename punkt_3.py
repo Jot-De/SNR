@@ -2,8 +2,10 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_report
+from sklearn.metrics import confusion_matrix, classification_report, roc_curve, auc
+from sklearn.preprocessing import label_binarize
 
+from scipy import interp
 from IPython.display import SVG
 
 from keras.utils.vis_utils import model_to_dot
@@ -163,6 +165,36 @@ def evaluate(model, test_generator):
     print('Classification Report')
     target_names = test_generator.class_indices.keys()
     print(classification_report(test_generator.classes, predictions_labels, target_names=target_names))
+
+    classes_bin = label_binarize(test_generator.classes, classes=list(range(0, 120)))
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    for i in range(classes_number):
+        fpr[i], tpr[i], _ = roc_curve(classes_bin[:, i], predictions[:, i], drop_intermediate=False)
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    all_fpr = np.unique(np.concatenate([fpr[i] for i in range(classes_number)]))
+
+    mean_tpr = np.zeros_like(all_fpr)
+    for i in range(classes_number):
+        mean_tpr += interp(all_fpr, fpr[i], tpr[i])
+
+    mean_tpr /= classes_number
+
+    fpr["macro"] = all_fpr
+    tpr["macro"] = mean_tpr
+    roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
+    print("Makro")
+    print(roc_auc["macro"])
+
+    # Plot all ROC curves
+    plt.figure()
+    plt.plot(fpr["macro"], tpr["macro"],
+             label='macro-average ROC curve (area = {0:0.001f})'
+                   ''.format(roc_auc["macro"]),
+             color='navy', linewidth=1)
+    plt.show()
 
     model_json = model.to_json()
     with open("model_3.json", "w") as json_file:
