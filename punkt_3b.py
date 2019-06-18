@@ -160,16 +160,16 @@ def train(model, train_generator, val_generator):
     # Save to file learning data after each epoch
     checkpoint = ModelCheckpoint(
         './base.model_3b',
-        monitor='val_sparse_categorical_accuracy',
+        monitor='val_loss',
         verbose=1,
         save_best_only=True,
-        mode='max',
+        mode='min',
         save_weights_only=False,
         period=1
     )
     # Stop training when a monitored quantity has stopped improving.
     earlystop = EarlyStopping(
-        monitor='val_sparse_categorical_accuracy',
+        monitor='val_loss',
         min_delta=0.1,
         patience=20,
         verbose=1,
