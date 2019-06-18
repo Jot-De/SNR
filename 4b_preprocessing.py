@@ -48,16 +48,16 @@ batch_size = 1
 class_nb = 120
 
 # os.chdir("C:\\Users\\Janek\\Desktop\\EITI\\SNR\\klasyfikacja\\code")
-# os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
-os.chdir("C:\\Users\\Marcin  Piotrek\\Desktop\\SNR\\Projekt")
+os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
+# os.chdir("C:\\Users\\Marcin  Piotrek\\Desktop\\SNR\\Projekt")
 # image_dir = '../input/images/Images/'
 image_test_dir = '../input/images/dataset/test'
 image_train_dir = '../input/images/dataset/train'
 
 base_model = load_model("model_3b.h5")
 
-mobilenet = Model(inputs=base_model.layers[0].get_input_at(0),
-                  outputs=base_model.layers[0].get_layer('out_relu').output)
+mobilenet = Model(inputs=base_model.get_input_at(0),
+                  outputs=base_model.get_layer('out_relu').output)
 pooling = layers.GlobalAveragePooling2D()(mobilenet.output)
 final_model = Model(inputs=mobilenet.input, outputs=[pooling])
 
