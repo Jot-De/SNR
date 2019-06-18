@@ -58,7 +58,8 @@ base_model = load_model("model_3b.h5")
 
 mobilenet = Model(inputs=base_model.layers[0].get_input_at(0),
                   outputs=base_model.layers[0].get_layer('out_relu').output)
-final_model = layers.GlobalAveragePooling2D()(mobilenet.output)
+pooling = layers.GlobalAveragePooling2D()(mobilenet.output)
+final_model = Model(inputs=mobilenet.input, outputs=[pooling])
 
 print(final_model.summary())
 
