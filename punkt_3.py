@@ -38,6 +38,7 @@ train_samples_number = 16418
 val_samples_number = 2009
 test_samples_number = 2153
 
+
 def show_final_history(history):
     fig, ax = plt.subplots(1, 2, figsize=(15, 5))
     ax[0].set_title('loss')

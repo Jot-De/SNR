@@ -56,8 +56,9 @@ image_train_dir = '../input/images/dataset/train'
 
 base_model = load_model("model_3b.h5")
 
-fin = Model(inputs=base_model.layers[0].get_input_at(0),
-                    outputs=base_model.layers[0].get_layer('block_14_depthwise_relu').output)
+mobilenet = Model(inputs=base_model.layers[0].get_input_at(0),
+                  outputs=base_model.layers[0].get_layer('out_relu').output)
+final_model = layers.GlobalAveragePooling2D()(mobilenet.output)
 
 print(final_model.summary())
 
