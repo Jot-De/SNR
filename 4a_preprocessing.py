@@ -50,8 +50,8 @@ class_nb = 120
 # os.chdir("C:\\Users\\Janek\\Desktop\\EITI\\SNR\\klasyfikacja\\code")
 os.chdir("C:\\Users\\Piotr\\Documents\\Studia\\Informatyka PW\\2 semestr\\SNR\\Projekt")
 # image_dir = '../input/images/Images/'
-image_test_dir = '../input/images/Images_3'
-image_train_dir = '../input/images/Images_3'
+image_test_dir = '../input/images/dataset/test'
+image_train_dir = '../input/images/dataset/train'
 
 final_model = load_model("model_3.h5")
 
@@ -88,7 +88,7 @@ for i in range(15780):
     _x, _y = train_set.next()
     _x_embed = final_model.predict(_x[:, :, :])
     X_train.append(_x_embed[0, :])
-    y_train.append(_y[0, :])
+    y_train.append(_y[0])
     if i % 100 == 0:
         print(i)
 
@@ -96,7 +96,7 @@ for i in range(3600):
     _x, _y = valid_set.next()
     _x_embed = final_model.predict(_x[:, :, :])
     X_test.append(_x_embed[0, :])
-    y_test.append(_y[0, :])
+    y_test.append(_y[0])
     if i % 100 == 0:
         print(i)
 
